@@ -1,0 +1,71 @@
+entryPoints:
+  web:
+    address: ":80"
+  web-secure:
+    address: ":443"
+
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "**********"
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      storage: /etc/traefik/acme/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        delayBeforeCheck: 10
+
+http:
+  routers:
+    web-router:
+      rule: "Host(`host.com`) || Host(`www.host.com`)"
+      entryPoints:
+        - web
+      middlewares:
+        - redirect
+        - csrf
+      service: django
+
+    web-secure-router:
+      rule: "Host(`host.com`) || Host(`www.host.com`)"
+      entryPoints:
+        - web-secure
+      middlewares:
+        - csrf
+      service: django
+      tls:
+        certResolver: letsencrypt
+
+    web-static-secure-router:
+      rule: "(Host(`host.com`) || Host(`www.host.com`)) && (PathPrefix(`/static`)"
+      entryPoints:
+        - web-secure
+      middlewares:
+        - csrf
+      service: nginx
+      tls:
+        certResolver: letsencrypt
+
+middlewares:
+    redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    csrf:
+      headers:
+        hostsProxyHeaders: ["X-CSRFToken"]
+
+services:
+    django:
+      loadBalancer:
+        servers:
+          - url: http://django:8001
+    nginx:
+      loadBalancer:
+        servers:
+          - url: http://nginx:80
+
+providers:
+  file:
+    filename: /etc/traefik/traefik.yml
+    watch: true

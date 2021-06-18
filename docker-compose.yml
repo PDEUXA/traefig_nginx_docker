@@ -1,0 +1,30 @@
+version: "3"
+
+volumes:
+  static_volume:
+  production_traefik:
+
+services:
+  traefik:
+    build:
+      context: traefik/
+      dockerfile: Dockerfile
+    environment:
+      - CF_DNS_API_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxx
+    volumes:
+      - production_traefik:/etc/traefik/acme:z
+    ports:
+      - 80:80
+      - 443:443
+    restart: unless-stopped
+
+
+  nginx_serve:
+    build:
+      context: nginx/
+      dockerfile: Dockerfile
+    volumes:
+      - static_volume:/opt/django/staticfiles
+    expose:
+      - 80
+    restart: unless-stopped
